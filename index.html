@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formial Labs — Compounding Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg:      #0d0f14;
+    --surface: #13161e;
+    --card:    #181c26;
+    --border:  #252a38;
+    --accent:  #4fffb0;
+    --accent2: #4fb8ff;
+    --red:     #ff5e5e;
+    --text:    #e8eaf0;
+    --muted:   #6b7394;
+    --mono:    'DM Mono', monospace;
+    --sans:    'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; padding: 32px 24px 80px; }
+  .main { max-width: 980px; margin: 0 auto; }
+
+  /* HEADER */
+  header { display: flex; align-items: flex-end; gap: 18px; margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+  .logo-mark { width: 48px; height: 48px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #0d0f14; flex-shrink: 0; }
+  h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 4px; }
+
+  /* TWO PANELS */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  @media(max-width:680px){ .panels { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .panel-label { font-size: 10px; font-family: var(--mono); color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .panel-title { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .panel-desc { font-size: 11px; font-family: var(--mono); color: var(--muted); line-height: 1.6; }
+
+  textarea {
+    width: 100%; min-height: 150px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: var(--mono); font-size: 11.5px; line-height: 1.75;
+    padding: 12px 14px; resize: vertical; outline: none; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); opacity: 0.55; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+    font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #0d0f14; }
+  .btn-primary:hover { background: #3ae89a; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-blue { background: var(--accent2); color: #0d0f14; }
+  .btn-blue:hover { background: #38a8ee; transform: translateY(-1px); }
+  .btn-blue:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+  .panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .panel-hint { font-size: 11px; font-family: var(--mono); color: var(--accent); margin-top: 2px; min-height: 16px; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 8px 0 32px; }
+
+  /* OUTPUT SECTION */
+  .out-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .out-title { font-size: 13px; font-family: var(--mono); color: var(--muted); }
+  .out-title span { color: var(--accent); font-weight: 500; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; width: fit-content; margin-bottom: 20px; }
+  .tab { font-size: 12px; font-family: var(--sans); font-weight: 600; padding: 7px 18px; cursor: pointer; border: none; background: transparent; color: var(--muted); border-radius: 7px; transition: all 0.15s; }
+  .tab.active { background: var(--card); color: var(--text); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .out-section { display: none; }
+  .out-section.visible { display: block; }
+
+  /* STATS */
+  .stat-row { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; min-width: 100px; }
+  .stat-n { font-size: 26px; font-weight: 800; color: var(--accent); font-family: var(--mono); }
+  .stat-l { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* BATCH CARDS */
+  .batch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .batch-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .batch-code { font-family: var(--mono); font-size: 21px; font-weight: 500; color: var(--accent); margin-bottom: 4px; }
+  .batch-raw { font-size: 10.5px; color: var(--muted); font-family: var(--mono); margin-bottom: 10px; line-height: 1.55; }
+  .batch-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { display: inline-block; font-size: 10px; padding: 2px 9px; border-radius: 20px; font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+  .pill-green { background: rgba(79,255,176,0.12); color: var(--accent); border: 1px solid rgba(79,255,176,0.2); }
+  .pill-blue  { background: rgba(79,184,255,0.1); color: var(--accent2); border: 1px solid rgba(79,184,255,0.2); }
+  .pill-warn  { background: rgba(255,190,60,0.1); color: #ffbe3c; border: 1px solid rgba(255,190,60,0.2); }
+
+  .ing-table { width: 100%; border-collapse: collapse; }
+  .ing-table th { font-size: 10px; color: var(--muted); padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; text-transform: uppercase; letter-spacing: 0.4px; }
+  .ing-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--mono); font-size: 11.5px; color: var(--text); }
+  .ing-table tr:last-child td { border-bottom: none; }
+  .tret-row td { color: var(--red); }
+  .solv-row td { color: var(--accent2); }
+  .exc-row td { color: var(--muted); }
+  .base-row td { color: #4a5070; }
+  .total-row td { background: rgba(255,255,255,0.04); font-weight: 600; border-top: 1px solid var(--border); }
+  .note-line { font-size: 10px; color: #3a4060; margin-top: 10px; font-family: var(--mono); line-height: 1.65; }
+
+  /* LABEL TABLE */
+  .table-wrap { overflow-x: auto; }
+  table.label-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.label-tbl thead th { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  table.label-tbl tbody td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--mono); font-size: 11.5px; color: var(--text); }
+  table.label-tbl tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* MASTER TABLE */
+  table.master-tbl { width: 100%; border-collapse: collapse; }
+  table.master-tbl thead th { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.master-tbl tbody td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--mono); font-size: 12px; }
+  table.master-tbl tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* EMPTY */
+  .empty { font-size: 12px; color: var(--muted); padding: 3rem; text-align: center; font-family: var(--mono); border: 1px dashed var(--border); border-radius: 12px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--accent); color: #0d0f14; font-family: var(--mono); font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 8px; opacity: 0; transform: translateY(8px); transition: all 0.22s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* PRINT / PDF */
+  @media print {
+    body { background: #fff !important; color: #000 !important; padding: 0 !important; font-family: Arial, sans-serif; }
+    header, .panels, hr.divider, .tabs, .out-header, .toast, #batchHint, #labelHint { display: none !important; }
+    #batchOutput { display: block !important; }
+    .out-section { display: none !important; }
+    #tab-cards { display: block !important; }
+    .batch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .batch-card { background: #fff !important; border: 1.5px solid #ccc !important; border-radius: 8px; padding: 14px; page-break-inside: avoid; break-inside: avoid; }
+    .batch-code { color: #000 !important; font-size: 16px !important; font-weight: 700; margin-bottom: 3px; }
+    .batch-raw  { color: #555 !important; font-size: 9px !important; margin-bottom: 8px; }
+    .pill { border: 1px solid #999 !important; color: #333 !important; background: #f5f5f5 !important; font-size: 9px; padding: 1px 6px; border-radius: 20px; }
+    .ing-table th { color: #666 !important; font-size: 9px; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+    .ing-table td { color: #000 !important; font-size: 10px; padding: 4px 6px; border-bottom: 1px solid #eee; }
+    .tret-row td  { color: #c00 !important; }
+    .solv-row td  { color: #006 !important; }
+    .exc-row td   { color: #555 !important; }
+    .base-row td  { color: #888 !important; }
+    .total-row td { background: #f0f0f0 !important; font-weight: 700; color: #000 !important; }
+    .note-line    { color: #888 !important; font-size: 8px; margin-top: 8px; }
+    .print-header { display: block !important; text-align: center; margin-bottom: 18px; }
+    .print-header h2 { font-size: 18px; font-weight: 800; margin: 0; }
+    .print-header p  { font-size: 10px; color: #666; margin: 3px 0 0; }
+  }
+  .print-header { display: none; }
+</style>
+</head>
+<body>
+<div class="main">
+
+  <header>
+    <div class="logo-mark">Fl</div>
+    <div>
+      <h1>Formial <span>Labs</span></h1>
+      <div class="subtitle">compounding dashboard · batch pdf · label excel generator</div>
+    </div>
+  </header>
+
+  <!-- TWO INPUT PANELS -->
+  <div class="panels">
+
+    <!-- BATCH PANEL -->
+    <div class="panel">
+      <div>
+        <div class="panel-label">01 — Batch Formulas</div>
+        <div class="panel-title">Batch Sheet → PDF</div>
+      </div>
+      <div class="panel-desc">
+        Paste formulas — one per line OR all run together.<br>
+        Duplicates count as multiple pumps automatically.
+      </div>
+      <textarea id="batchInput" placeholder="Tretinoin 0.030% + Clindamycin 1% + Spironolactone 5%
+Tretinoin 0.018% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.018% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.025% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.030% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.030% + Niacinamide 4% + Azelaic acid 4%"></textarea>
+      <div class="panel-actions">
+        <button class="btn btn-primary" id="batchBtn" onclick="processBatch()">↺ Process Batches</button>
+        <button class="btn btn-ghost" onclick="clearBatch()">Clear</button>
+      </div>
+      <div class="panel-hint" id="batchHint"></div>
+    </div>
+
+    <!-- LABEL PANEL -->
+    <div class="panel">
+      <div>
+        <div class="panel-label">02 — Patient Labels</div>
+        <div class="panel-title">Labels → Excel (.xlsx)</div>
+      </div>
+      <div class="panel-desc">
+        Paste prescriptions in ||| format.<br>
+        One prescription per line.
+      </div>
+      <textarea id="labelInput" placeholder="Hiba Fatima, 26Y|||Tretinoin 0.018% + Niacinamide 4% + Azelaic acid 4%|||Use 1-2 pumps at night as directed|||Date of compounding: 10-04-2026|||Expiry date: 15-05-2026|||Formial labs pharmacist:-
+Areeba Khan, 31Y|||Tretinoin 0.025% + Clindamycin 1% + Spironolactone 5%|||Apply pea-sized amount at night|||Date of compounding: 10-04-2026|||Expiry date: 10-05-2026|||Formial labs pharmacist:-"></textarea>
+      <div class="panel-actions">
+        <button class="btn btn-blue" id="labelBtn" onclick="downloadLabels()">↓ Download Labels .xlsx</button>
+        <button class="btn btn-ghost" onclick="clearLabels()">Clear</button>
+      </div>
+      <div class="panel-hint" id="labelHint"></div>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <!-- BATCH OUTPUT -->
+  <div id="batchOutput" style="display:none">
+    <!-- shown only when printing -->
+    <div class="print-header">
+      <h2>Formial Labs — Batch Sheet</h2>
+      <p id="printMeta"></p>
+    </div>
+    <div class="out-header">
+      <div class="out-title">Batch output — <span id="batchSummary"></span></div>
+      <button class="btn btn-primary" onclick="downloadPDF()">&#11015; Download PDF</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('cards',this)">Batch Cards</button>
+      <button class="tab" onclick="switchTab('master',this)">Master List</button>
+    </div>
+    <div id="tab-cards"  class="out-section visible"></div>
+    <div id="tab-master" class="out-section"></div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+const TRET_G_PER_ML  = 0.01;  // stock: 0.1g / 10ml
+const EXCIPIENTS     = ["EDTA", "BHT", "Sodium Metabisulphite"];
+const EXCIPIENT_PCT  = 0.1;
+
+const ALL_ING = [
+  "Tretinoin","Azelaic acid","Niacinamide","Spironolactone","Clindamycin",
+  "Hydroquinone","Kojic acid","Hyaluronic Acid","Adapalene","Benzoyl Peroxide",
+  "Minoxidil","Tranexamic acid","Hydrocortisone","Alpha Arbutin",
+  "Transcutol-P","Propylene Glycol","Sodium Metabisulphite","EDTA","BHT"
+];
+
+const ABBREV = {
+  "tretinoin":"T","azelaic acid":"A","niacinamide":"N","spironolactone":"S",
+  "clindamycin":"C","hydroquinone":"H","kojic acid":"K","tranexamic acid":"X",
+  "hyaluronic acid":"Y","adapalene":"Ad","benzoyl peroxide":"B","minoxidil":"M",
+  "hydrocortisone":"Hc","alpha arbutin":"Aa"
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE CALCULATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+function totalGrams(n) {
+  if (n <= 0) return 0;
+  if (n === 1) return 20;
+  if (n === 2) return 40;
+  return 40 + (n - 2) * 15;
+}
+
+function isTCS(base) {
+  const n = base.map(i => i.name.toLowerCase());
+  return n.some(x => x.includes('tretinoin'))
+      && n.some(x => x.includes('clindamycin'))
+      && n.some(x => x.includes('spironolactone'));
+}
+
+function buildFull(base) {
+  const names   = base.map(i => i.name.toLowerCase());
+  const hasAz   = names.some(n => n.includes('azelaic'));
+  const hasTret = names.some(n => n.includes('tretinoin'));
+
+  const excipients = EXCIPIENTS
+    .filter(e => !(e === 'EDTA' && !hasAz))
+    .map(e => ({ name: e, percent: EXCIPIENT_PCT }));
+
+  const apiPct  = base.filter(i => !i.name.toLowerCase().includes('tretinoin'))
+                      .reduce((s, i) => s + i.percent, 0);
+  const solvPct = apiPct * 0.5;
+  let solvent   = null;
+  if (solvPct > 0) {
+    const nm = (hasTret && isTCS(base)) ? 'Propylene Glycol' : 'Transcutol-P';
+    solvent   = { name: nm, percent: solvPct };
+  }
+  return [...base, ...excipients, ...(solvent ? [solvent] : [])];
+}
+
+function calcRows(base, count) {
+  const full      = buildFull(base);
+  const totalG    = totalGrams(count);
+  const sumPct    = full.reduce((s, i) => s + i.percent, 0);
+  const basePct   = 100 - sumPct;
+  let extraTretVol = 0;
+  const rows = [];
+
+  for (const ing of full) {
+    const gAmt   = (ing.percent / 100) * totalG;
+    const isTret = ing.name.toLowerCase().includes('tretinoin');
+    const isTrans = ing.name.toLowerCase().includes('transcutol');
+    const isPG    = ing.name.toLowerCase().includes('propylene glycol');
+    const isExc   = EXCIPIENTS.includes(ing.name);
+
+    if (isTret) {
+      const ml = gAmt / TRET_G_PER_ML;
+      extraTretVol += ml - gAmt;
+      rows.push({ name: ing.name + ' *', pct: ing.percent, qty: ml, unit: 'ml', type: 'tret' });
+    } else if (isTrans || isPG) {
+      rows.push({ name: ing.name + ' **', pct: ing.percent, qty: gAmt, unit: 'ml', type: 'solv' });
+    } else if (isExc) {
+      rows.push({ name: ing.name, pct: ing.percent, qty: gAmt, unit: 'g', type: 'exc' });
+    } else {
+      rows.push({ name: ing.name, pct: ing.percent, qty: gAmt, unit: 'g', type: 'api' });
+    }
+  }
+
+  const baseAmt = (basePct / 100) * totalG - extraTretVol;
+  rows.push({ name: 'Base (q.s.)', pct: basePct, qty: baseAmt, unit: 'g', type: 'base' });
+  rows.push({ name: 'TOTAL', pct: 100.0, qty: totalG, unit: 'g', type: 'total' });
+  return rows;
+}
+
+function codeLabel(base) {
+  const tret   = base.filter(i =>  i.name.toLowerCase().includes('tretinoin'));
+  const others = base.filter(i => !i.name.toLowerCase().includes('tretinoin'))
+                     .sort((a, b) => a.name.localeCompare(b.name));
+  let code = '';
+  for (const i of [...tret, ...others]) {
+    const k = i.name.toLowerCase().trim();
+    code += ABBREV[k] || i.name[0].toUpperCase();
+  }
+  if (tret.length) code += ` ${tret[0].percent.toFixed(3)}%`;
+  return code;
+}
+
+function fKey(ings) {
+  return ings.map(i => i.name.toLowerCase() + ':' + i.percent.toFixed(6)).sort().join('|');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARSE BATCH INPUT
+// ─────────────────────────────────────────────────────────────────────────────
+function parseBatch(raw) {
+  // Normalise: collapse "0.025 %" → "0.025%" and "0.020 %" → "0.020%"
+  const cleaned = raw.trim().replace(/(\d)\s+%/g, '$1%');
+  const text = cleaned.replace(/(?<!\n)(?=Tretinoin\s)/gi, '\n');
+  const groups = {};
+  for (let line of text.split('\n')) {
+    line = line.trim();
+    if (!line || !line.includes('%')) continue;
+    const parts = line.split('+');
+    const ings  = [];
+    for (const part of parts) {
+      // Robustly match: "Ingredient Name 0.025%" — name is everything before last number+%
+      const m = part.trim().match(/^(.*?)\s+([\d.]+)%\s*$/);
+      if (!m) continue;
+      const name = m[1].trim();
+      const pct  = parseFloat(m[2]);
+      if (!name || isNaN(pct)) continue;
+      ings.push({ name, percent: pct });
+    }
+    if (!ings.length) continue;
+    const k = fKey(ings);
+    if (!groups[k]) groups[k] = { formula: ings, raw: line, count: 0 };
+    groups[k].count++;
+  }
+  return Object.values(groups).sort((a, b) => codeLabel(a.formula).localeCompare(codeLabel(b.formula)));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARSE LABEL INPUT
+// ─────────────────────────────────────────────────────────────────────────────
+function parseLabels(raw) {
+  const recs = [];
+  for (let line of raw.trim().split('\n')) {
+    line = line.trim().replace(/^"+|"+$/g, '');
+    if (!line) continue;
+    const parts = line.split('|||').map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const name_age = parts[0];
+    let formula = '', directions = 'Use 1-2 pumps at night as directed', comp = '', exp = '', pharmacist = '';
+    for (const p of parts) {
+      if (p.includes('%') && !p.toLowerCase().includes('date')) { formula = p; continue; }
+      if (p.toLowerCase().startsWith('use ')) { directions = p; continue; }
+      const mc = p.match(/date of compounding[:\s]+(\S+)/i); if (mc) { comp = mc[1]; continue; }
+      const me = p.match(/expiry date[:\s]+(\S+)/i);         if (me) { exp = me[1]; continue; }
+      if (p.toLowerCase().includes('pharmacist')) { pharmacist = p; }
+    }
+    if (!formula) continue;
+    recs.push({ name_age, formula, directions, comp, exp, pharmacist: pharmacist || 'Formial Labs Pharmacist' });
+  }
+  return recs;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MASTER LIST
+// ─────────────────────────────────────────────────────────────────────────────
+function getMaster(groups) {
+  const master = {};
+  for (const g of groups) {
+    const full   = buildFull(g.formula);
+    const totalG = totalGrams(g.count);
+    for (const ing of full) {
+      const gAmt  = (ing.percent / 100) * totalG;
+      const isTret  = ing.name.toLowerCase().includes('tretinoin');
+      const isTrans = ing.name.toLowerCase().includes('transcutol');
+      const isPG    = ing.name.toLowerCase().includes('propylene glycol');
+      let key = ing.name;
+      if (isTret)  { master['Tretinoin']       = (master['Tretinoin']       || 0) + gAmt / TRET_G_PER_ML; continue; }
+      if (isTrans) { key = 'Transcutol-P'; }
+      if (isPG)    { key = 'Propylene Glycol'; }
+      master[key] = (master[key] || 0) + gAmt;
+    }
+  }
+  return master;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER BATCH CARDS
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCards(groups) {
+  const el = document.getElementById('tab-cards');
+  if (!groups.length) { el.innerHTML = '<div class="empty">no batch data</div>'; return; }
+
+  let html = '<div class="batch-grid">';
+  for (const g of groups) {
+    const code  = codeLabel(g.formula);
+    const rows  = calcRows(g.formula, g.count);
+    const totalG = totalGrams(g.count);
+
+    let tRows = '';
+    for (const r of rows) {
+      let qStr, cls = '';
+      if      (r.type === 'tret')  { qStr = `${r.qty.toFixed(2)} ml`;   cls = 'tret-row'; }
+      else if (r.type === 'solv')  { qStr = `${r.qty.toFixed(4)} ml`;   cls = 'solv-row'; }
+      else if (r.type === 'exc')   { qStr = `${r.qty.toFixed(4)} g`;    cls = 'exc-row'; }
+      else if (r.type === 'base')  { qStr = `${r.qty.toFixed(4)} g`;    cls = 'base-row'; }
+      else if (r.type === 'total') { qStr = `${r.qty.toFixed(2)} g`;    cls = 'total-row'; }
+      else                         { qStr = `${r.qty.toFixed(4)} g`; }
+      tRows += `<tr class="${cls}"><td>${r.name}</td><td>${r.pct.toFixed(3)}%</td><td>${qStr}</td></tr>`;
+    }
+
+    html += `<div class="batch-card">
+      <div class="batch-code">${code}</div>
+      <div class="batch-raw">${g.raw}</div>
+      <div class="batch-meta">
+        <span class="pill pill-green">${g.count} pump${g.count > 1 ? 's' : ''}</span>
+        <span class="pill pill-blue">${totalG} g</span>
+        ${isTCS(g.formula) ? '<span class="pill pill-warn">TCS · PG</span>' : ''}
+      </div>
+      <table class="ing-table">
+        <thead><tr><th>Ingredient</th><th>%</th><th>Qty</th></tr></thead>
+        <tbody>${tRows}</tbody>
+      </table>
+      <div class="note-line">* Tretinoin stock 0.1g/10ml — ml shown<br>** Solvent = 50 % of total non-Tret API wt.</div>
+    </div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderMaster(groups) {
+  const el     = document.getElementById('tab-master');
+  const master = getMaster(groups);
+  const totalP = groups.reduce((s, g) => s + g.count, 0);
+
+  let rows = '';
+  for (const ing of ALL_ING) {
+    const amt = master[ing];
+    if (!amt) continue;
+    const unit = ['Tretinoin', 'Transcutol-P', 'Propylene Glycol'].includes(ing) ? 'ml' : 'g';
+    rows += `<tr>
+      <td style="color:var(--text)">${ing}</td>
+      <td><span class="pill pill-blue">${unit}</span></td>
+      <td style="color:var(--accent);font-weight:600">${amt.toFixed(4)}</td>
+    </tr>`;
+  }
+
+  el.innerHTML = `<div class="stat-row">
+    <div class="stat"><div class="stat-n">${groups.length}</div><div class="stat-l">unique formulas</div></div>
+    <div class="stat"><div class="stat-n">${totalP}</div><div class="stat-l">total pumps</div></div>
+  </div>
+  <div class="table-wrap"><table class="master-tbl">
+    <thead><tr><th>Ingredient</th><th>Unit</th><th>Total to Prepare</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+let _groups = [];
+
+function processBatch() {
+  const raw = document.getElementById('batchInput').value.trim();
+  if (!raw) { document.getElementById('batchHint').textContent = 'paste formulas first'; return; }
+  _groups = parseBatch(raw);
+  if (!_groups.length) { document.getElementById('batchHint').textContent = 'no valid formulas found'; return; }
+  renderCards(_groups);
+  renderMaster(_groups);
+  const total = _groups.reduce((s, g) => s + g.count, 0);
+  document.getElementById('batchSummary').textContent = `${_groups.length} unique formula${_groups.length > 1 ? 's' : ''} · ${total} pump${total > 1 ? 's' : ''}`;
+  document.getElementById('batchOutput').style.display = 'block';
+  document.getElementById('batchHint').textContent = `✓ ${_groups.length} batch${_groups.length > 1 ? 'es' : ''} · ${total} pumps`;
+  document.getElementById('batchOutput').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function downloadLabels() {
+  const raw = document.getElementById('labelInput').value.trim();
+  if (!raw) { document.getElementById('labelHint').textContent = 'paste label data first'; return; }
+  const recs = parseLabels(raw);
+  if (!recs.length) { document.getElementById('labelHint').textContent = 'no valid labels parsed'; return; }
+
+  const sorted = [...recs].sort((a, b) => a.formula.localeCompare(b.formula));
+  const wsData = [['Name, Age', 'Content / Concentration', 'Directions', 'Compounding Date', 'Expiry Date', 'Pharmacist']];
+  for (const r of sorted) {
+    wsData.push([
+      r.name_age,
+      r.formula,
+      r.directions,
+      r.comp ? `Date of Compounding: ${r.comp}` : '',
+      r.exp  ? `Date of Expiry: ${r.exp}` : '',
+      r.pharmacist
+    ]);
+  }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [28, 60, 34, 30, 26, 30].map(w => ({ wch: w }));
+
+  const hFill = { fgColor: { rgb: '1F4E79' } };
+  const hFont = { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } };
+  for (let C = 0; C < 6; C++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!ws[addr]) continue;
+    ws[addr].s = { font: hFont, fill: hFill, alignment: { wrapText: true, vertical: 'center', horizontal: 'center' } };
+  }
+  for (let r = 1; r < wsData.length; r++) {
+    for (let c = 0; c < 6; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[addr]) ws[addr] = { v: '', t: 's' };
+      const fill = r % 2 === 0 ? { fgColor: { rgb: 'F0F6FA' } } : { fgColor: { rgb: 'FFFFFF' } };
+      ws[addr].s = { font: { name: 'Arial', sz: 10 }, fill, alignment: { wrapText: true, vertical: 'center' } };
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Compounding Labels');
+  XLSX.writeFile(wb, 'pharmacy_labels.xlsx');
+  document.getElementById('labelHint').textContent = `✓ ${recs.length} label${recs.length > 1 ? 's' : ''} exported`;
+  showToast(`${recs.length} labels downloaded!`);
+}
+
+function clearBatch() {
+  document.getElementById('batchInput').value = '';
+  document.getElementById('batchHint').textContent = '';
+  document.getElementById('batchOutput').style.display = 'none';
+  _groups = [];
+}
+
+function clearLabels() {
+  document.getElementById('labelInput').value = '';
+  document.getElementById('labelHint').textContent = '';
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.out-section').forEach(s => s.classList.remove('visible'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('visible');
+}
+
+function downloadPDF() {
+  if (!_groups.length) { showToast('No batches to export'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = 210, pageH = 297;
+  const margin = 12, colGap = 6;
+  const colW = (pageW - margin * 2 - colGap) / 2;
+
+  // ── colours ──────────────────────────────────────────────────────────────
+  const C = {
+    accent:  [30, 160, 100],
+    accent2: [40, 130, 200],
+    red:     [180, 40,  40],
+    muted:   [120, 120, 130],
+    border:  [210, 210, 215],
+    bg:      [248, 250, 252],
+    bgAlt:   [255, 255, 255],
+    dark:    [30,  30,  40],
+    warn:    [180, 120, 20],
+  };
+
+  // ── page header ───────────────────────────────────────────────────────────
+  function drawPageHeader(doc, pageNum, totalPages) {
+    doc.setFillColor(30, 160, 100);
+    doc.roundedRect(margin, 8, 40, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('Formial Labs', margin + 20, 14.5, { align: 'center' });
+
+    doc.setTextColor(...C.dark);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('Compounding Batch Sheet', margin + 44, 14.5);
+
+    const d = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    const total = _groups.reduce((s,g)=>s+g.count,0);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...C.muted);
+    doc.text(`${_groups.length} formula${_groups.length>1?'s':''} · ${total} pump${total>1?'s':''} · ${d}   Page ${pageNum}/${totalPages}`,
+      pageW - margin, 14.5, { align: 'right' });
+
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 20, pageW - margin, 20);
+  }
+
+  // ── draw one batch card, returns new Y ────────────────────────────────────
+  function drawCard(doc, g, x, y, w) {
+    const rows   = calcRows(g.formula, g.count);
+    const totalG = totalGrams(g.count);
+    const code   = codeLabel(g.formula);
+    const tcs    = isTCS(g.formula);
+
+    // estimate card height
+    const rowH   = 5.2;
+    const cardH  = 8 + 5 + 5 + 5.5 + rows.length * rowH + 7;
+
+    // card background
+    doc.setFillColor(...C.bg);
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(x, y, w, cardH, 2, 2, 'FD');
+
+    let cy = y + 6;
+
+    // code label
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...C.accent);
+    doc.text(code, x + 4, cy);
+    cy += 5;
+
+    // raw formula (truncate if too long)
+    const rawText = g.raw.length > 55 ? g.raw.slice(0, 53) + '…' : g.raw;
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...C.muted);
+    doc.text(rawText, x + 4, cy);
+    cy += 5;
+
+    // pills
+    const pillH = 4, pillR = 1;
+    let px = x + 4;
+    // pumps pill
+    doc.setFillColor(230, 255, 240); doc.setDrawColor(...C.accent);
+    doc.setLineWidth(0.2);
+    const pumpTxt = `${g.count} pump${g.count>1?'s':''}`;
+    const pumpW = doc.getTextWidth(pumpTxt) + 5;
+    doc.roundedRect(px, cy - 3, pumpW, pillH, pillR, pillR, 'FD');
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.accent);
+    doc.text(pumpTxt, px + pumpW/2, cy, { align: 'center' });
+    px += pumpW + 3;
+    // grams pill
+    const gramTxt = `${totalG} g`;
+    const gramW = doc.getTextWidth(gramTxt) + 5;
+    doc.setFillColor(225, 240, 255); doc.setDrawColor(...C.accent2);
+    doc.roundedRect(px, cy - 3, gramW, pillH, pillR, pillR, 'FD');
+    doc.setFontSize(6); doc.setTextColor(...C.accent2);
+    doc.text(gramTxt, px + gramW/2, cy, { align: 'center' });
+    px += gramW + 3;
+    if (tcs) {
+      const tcsTxt = 'TCS · PG';
+      const tcsW = doc.getTextWidth(tcsTxt) + 5;
+      doc.setFillColor(255, 248, 220); doc.setDrawColor(...C.warn);
+      doc.roundedRect(px, cy - 3, tcsW, pillH, pillR, pillR, 'FD');
+      doc.setFontSize(6); doc.setTextColor(...C.warn);
+      doc.text(tcsTxt, px + tcsW/2, cy, { align: 'center' });
+    }
+    cy += 5.5;
+
+    // table header
+    const c1=4, c2=w*0.42, c3=w*0.65;
+    doc.setFillColor(235, 238, 245);
+    doc.rect(x, cy - 3.5, w, 5, 'F');
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.muted);
+    doc.text('INGREDIENT', x + c1, cy);
+    doc.text('%', x + c2, cy);
+    doc.text('QTY', x + c3, cy);
+    cy += 1.5;
+
+    // table rows
+    doc.setFont('helvetica', 'normal');
+    for (const r of rows) {
+      cy += rowH;
+      const isEven = rows.indexOf(r) % 2 === 0;
+      if (r.type !== 'total') {
+        doc.setFillColor(...(isEven ? C.bgAlt : [242, 245, 250]));
+        doc.rect(x, cy - 3.8, w, rowH, 'F');
+      } else {
+        doc.setFillColor(225, 235, 245);
+        doc.rect(x, cy - 3.8, w, rowH, 'F');
+      }
+
+      let txtColor = C.dark;
+      if (r.type === 'tret')  txtColor = C.red;
+      else if (r.type === 'solv') txtColor = C.accent2;
+      else if (r.type === 'exc')  txtColor = C.muted;
+      else if (r.type === 'base') txtColor = [150, 155, 170];
+      else if (r.type === 'total'){ txtColor = C.dark; doc.setFont('helvetica','bold'); }
+
+      doc.setFontSize(7); doc.setTextColor(...txtColor);
+      doc.text(r.name,            x + c1, cy);
+      doc.text(r.pct.toFixed(3)+'%', x + c2, cy);
+
+      let qStr;
+      if      (r.type==='tret')  qStr = r.qty.toFixed(2)+' ml';
+      else if (r.type==='solv')  qStr = r.qty.toFixed(4)+' ml';
+      else if (r.type==='total') qStr = r.qty.toFixed(2)+' g';
+      else                       qStr = r.qty.toFixed(4)+' g';
+      doc.text(qStr, x + c3, cy);
+      if (r.type === 'total') doc.setFont('helvetica','normal');
+    }
+    cy += 2;
+
+    // footnote
+    doc.setFontSize(5.5); doc.setTextColor(...C.muted);
+    doc.text('* Tret stock 0.1g/10ml (ml shown)  ** Solvent = 50% non-Tret API wt.', x + 4, cy + 3);
+
+    return y + cardH + 5;
+  }
+
+  // ── layout: 2 columns, new page when needed ───────────────────────────────
+  const topY    = 24;
+  const bottomY = pageH - 10;
+
+  // pre-compute total pages (approximate)
+  // We'll just build and let jsPDF handle pages
+  let col = 0;
+  let xPos = [margin, margin + colW + colGap];
+  let yPos = [topY, topY];
+  let currentPage = 1;
+  const totalPages = Math.ceil(_groups.length / 2); // rough estimate, updated below
+
+  drawPageHeader(doc, 1, '?');
+
+  for (let i = 0; i < _groups.length; i++) {
+    const g   = _groups[i];
+    const rows = calcRows(g.formula, g.count);
+    const cardH = 8 + 5 + 5 + 5.5 + rows.length * 5.2 + 7 + 5;
+
+    // if card doesn't fit in this column, try the other column or new page
+    if (yPos[col] + cardH > bottomY) {
+      col = col === 0 ? 1 : 0; // try other column
+      if (yPos[col] + cardH > bottomY) {
+        // both columns full — new page
+        doc.addPage();
+        currentPage++;
+        yPos = [topY, topY];
+        col  = 0;
+        drawPageHeader(doc, currentPage, '?');
+      }
+    }
+
+    const newY = drawCard(doc, g, xPos[col], yPos[col], colW);
+    yPos[col]  = newY;
+    col = col === 0 ? 1 : 0;
+  }
+
+  // fix up page numbers
+  const totalPagesReal = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPagesReal; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(...C.muted);
+    const d = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const total = _groups.reduce((s,g)=>s+g.count,0);
+    // overwrite the page line on the right
+    doc.setFillColor(255,255,255);
+    doc.rect(pageW - 80, 8, 80, 14, 'F');
+    doc.text(
+      `${_groups.length} formula${_groups.length>1?'s':''} · ${total} pump${total>1?'s':''} · ${d}   Page ${p}/${totalPagesReal}`,
+      pageW - margin, 14.5, { align: 'right' }
+    );
+  }
+
+  const d = new Date().toISOString().slice(0,10);
+  const filename = `formial_batches_${d}.pdf`;
+
+  // Use Blob URL for reliable download on Android / ChromeOS / Primebook
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }, 3000);
+
+  showToast('PDF saved to Downloads!');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
