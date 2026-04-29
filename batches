@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formial Labs — Batches</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --blk:#08080a; --s1:#101013; --s2:#17171b; --s3:#202026;
+  --border:#ffffff18; --border2:#ffffff28;
+  --neon:#c8f000; --orange:#ff5500; --pink:#ff2d78; --cyan:#00e5ff;
+  --white:#ffffff;
+  --dim:rgba(255,255,255,0.62);
+  --faint:rgba(255,255,255,0.3);
+  --sans:'Space Grotesk',sans-serif;
+  --display:'Barlow Condensed',sans-serif;
+  --mono:'DM Mono',monospace;
+}
+html,body{height:100%;background:var(--blk);color:var(--white);font-family:var(--sans);overflow:hidden;}
+.page{position:fixed;inset:0;display:none;flex-direction:column;}
+.page.active{display:flex;}
+
+/* ── HOME ── */
+#home{align-items:center;justify-content:center;background:var(--blk);overflow:hidden;}
+.blob{position:absolute;border-radius:50%;filter:blur(110px);pointer-events:none;}
+.b1{width:520px;height:520px;background:var(--neon);opacity:.028;top:-130px;left:-170px;animation:d1 9s ease-in-out infinite;}
+.b2{width:380px;height:380px;background:var(--pink);opacity:.03;bottom:-80px;right:-100px;animation:d2 12s ease-in-out infinite;}
+@keyframes d1{0%,100%{transform:translate(0,0);}50%{transform:translate(28px,18px);}}
+@keyframes d2{0%,100%{transform:translate(0,0);}50%{transform:translate(-20px,-12px);}}
+
+.home-stack{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;}
+.brand-main{font-family:var(--display);font-size:clamp(88px,13vw,160px);font-weight:900;letter-spacing:14px;line-height:.95;color:var(--white);text-align:center;}
+.brand-main em{font-style:normal;color:var(--neon);}
+.brand-sub{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:8px;text-transform:uppercase;text-align:center;margin-top:8px;margin-bottom:20px;}
+
+/* sheets bar */
+.sheets-bar{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border2);border-radius:100px;padding:8px 16px 8px 14px;margin-bottom:20px;width:380px;max-width:90vw;}
+.sheets-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px rgba(200,240,0,.65);flex-shrink:0;}
+.sheets-bar input{flex:1;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:11px;color:var(--white);}
+.sheets-bar input::placeholder{color:var(--faint);}
+#sheetsStatus{font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;}
+
+/* bottle */
+.bottle-scene{width:200px;height:380px;position:relative;cursor:pointer;margin-bottom:16px;}
+.bottle-scene:hover .cap-lid{transform:translateY(-72px) rotate(-2deg);opacity:0;}
+.bottle-scene:hover .pump-rings{opacity:1;transform:translateY(0);}
+.cap-lid{transition:transform .6s cubic-bezier(.4,0,.2,1),opacity .45s ease;}
+.pump-rings{opacity:0;transform:translateY(4px);transition:opacity .4s ease .25s,transform .4s ease .25s;}
+.hover-hint{text-align:center;font-family:var(--mono);font-size:8px;color:var(--faint);letter-spacing:2.5px;text-transform:uppercase;margin-top:-8px;margin-bottom:8px;}
+
+/* nav dots */
+.dots-row{display:flex;align-items:center;gap:40px;}
+.dot-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .2s;}
+.dot-item:hover{transform:translateY(-3px);}
+.dot-item:hover .dot{transform:scale(1.3);}
+.dot-item:hover .dot-lbl{color:var(--white);}
+.dot{width:12px;height:12px;border-radius:50%;transition:transform .2s;}
+.dot.batch{background:var(--neon);box-shadow:0 0 18px rgba(200,240,0,.65);}
+.dot-lbl{font-family:var(--mono);font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--faint);transition:color .2s;}
+
+/* ── INNER PAGES ── */
+.inner{background:var(--blk);overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 36px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.back{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--dim);transition:color .18s;text-transform:uppercase;}
+.back:hover{color:var(--white);}
+.page-title{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:3px;color:var(--neon);}
+.top-dot{width:9px;height:9px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px rgba(200,240,0,.7);}
+.body{flex:1;overflow-y:auto;padding:36px;scrollbar-width:thin;scrollbar-color:var(--s3) transparent;}
+.body::-webkit-scrollbar{width:3px;}
+.body::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px;}
+
+/* card */
+.card{background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:30px;margin-bottom:20px;}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;color:var(--neon);}
+.card-title{font-size:24px;font-weight:700;color:var(--white);margin-bottom:8px;}
+.card-desc{font-family:var(--mono);font-size:12px;color:var(--dim);line-height:1.8;margin-bottom:20px;}
+
+textarea{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:12px;color:var(--white);font-family:var(--mono);font-size:12px;line-height:1.85;padding:16px 18px;resize:vertical;outline:none;min-height:140px;transition:border-color .2s;}
+textarea:focus{border-color:#ffffff35;}
+textarea::placeholder{color:var(--faint);}
+
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.btn{padding:11px 24px;border-radius:100px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .18s;}
+.btn-neon{background:var(--neon);color:#000;}
+.btn-neon:hover{box-shadow:0 6px 28px rgba(200,240,0,.4);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border2);}
+.btn-ghost:hover{border-color:#ffffff35;color:var(--white);}
+
+.hint{font-family:var(--mono);font-size:11px;margin-top:12px;min-height:14px;font-weight:500;}
+.hint.ok{color:var(--neon);}
+.hint.err{color:var(--pink);}
+
+#batchOutput{margin-top:24px;display:none;}
+.out-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+.out-info{font-family:var(--mono);font-size:11px;color:var(--dim);}
+.out-info span{color:var(--neon);}
+.stabs{display:flex;gap:6px;margin-bottom:20px;}
+.stab{font-family:var(--mono);font-size:11px;letter-spacing:.5px;padding:6px 18px;border-radius:100px;cursor:pointer;border:1px solid var(--border2);color:var(--dim);background:transparent;transition:all .15s;}
+.stab.active{background:rgba(200,240,0,.1);color:var(--neon);border-color:rgba(200,240,0,.3);}
+.out-sec{display:none;}
+.out-sec.visible{display:block;}
+
+.batch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+.batch-card{background:var(--s2);border:1px solid var(--border2);border-radius:16px;padding:20px;}
+.batch-code{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--neon);margin-bottom:4px;}
+.batch-raw{font-size:10px;color:var(--faint);font-family:var(--mono);margin-bottom:12px;line-height:1.6;}
+.batch-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;}
+.pill{font-size:9px;padding:3px 11px;border-radius:20px;font-family:var(--mono);font-weight:600;}
+.pn{background:rgba(200,240,0,.1);color:var(--neon);border:1px solid rgba(200,240,0,.25);}
+.po{background:rgba(255,85,0,.1);color:var(--orange);border:1px solid rgba(255,85,0,.25);}
+.pw{background:rgba(255,200,0,.08);color:#ffc400;border:1px solid rgba(255,200,0,.22);}
+
+.ing-table{width:100%;border-collapse:collapse;}
+.ing-table th{font-size:9px;color:var(--faint);padding:5px 7px;border-bottom:1px solid var(--border);text-align:left;text-transform:uppercase;letter-spacing:.5px;}
+.ing-table td{padding:6px 7px;border-bottom:1px solid #111116;font-family:var(--mono);font-size:11px;color:var(--white);}
+.ing-table tr:last-child td{border-bottom:none;}
+.tret-row td{color:#ff8080;font-weight:500;}
+.solv-row td{color:var(--cyan);}
+.exc-row td{color:var(--faint);}
+.base-row td{color:#2a2a32;}
+.total-row td{background:rgba(200,240,0,.05);font-weight:700;border-top:1px solid rgba(200,240,0,.16);color:var(--neon);}
+.note-line{font-size:9px;color:var(--faint);margin-top:10px;font-family:var(--mono);line-height:1.7;}
+
+.stat-row{display:flex;gap:10px;margin-bottom:18px;}
+.stat{background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:14px 20px;border-left:3px solid var(--neon);}
+.stat-n{font-size:28px;font-weight:700;color:var(--neon);font-family:var(--mono);}
+.stat-l{font-size:9px;color:var(--dim);margin-top:2px;letter-spacing:.5px;text-transform:uppercase;}
+.table-wrap{overflow-x:auto;}
+table.mt{width:100%;border-collapse:collapse;}
+table.mt thead th{font-family:var(--mono);font-size:9px;color:var(--faint);text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border2);text-align:left;background:var(--s2);letter-spacing:.5px;}
+table.mt tbody td{padding:9px 12px;border-bottom:1px solid #111116;font-family:var(--mono);font-size:11.5px;color:var(--white);}
+table.mt tbody tr:hover td{background:var(--s3);}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--neon);color:#000;font-family:var(--mono);font-size:12px;font-weight:600;padding:10px 26px;border-radius:100px;opacity:0;transition:all .25s;pointer-events:none;z-index:9999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- ══════════ HOME ══════════ -->
+<div class="page active" id="home">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+
+  <div class="home-stack">
+    <div class="brand-main">FORMIAL<em>.</em></div>
+    <div class="brand-sub">Labs Pharmacy</div>
+
+    <div class="sheets-bar">
+      <div class="sheets-dot"></div>
+      <input id="sheetsUrl" type="text" placeholder="Paste Google Sheets Web App URL…">
+      <span id="sheetsStatus"></span>
+    </div>
+
+    <!-- BOTTLE — capped, cap lifts on hover to reveal 3-tier pump -->
+    <div class="bottle-scene">
+      <svg width="200" height="380" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="glassBody" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0a1825" stop-opacity=".92"/>
+            <stop offset="12%" stop-color="#1a3550" stop-opacity=".55"/>
+            <stop offset="36%" stop-color="#3a6080" stop-opacity=".16"/>
+            <stop offset="58%" stop-color="#5a85a5" stop-opacity=".1"/>
+            <stop offset="80%" stop-color="#1a3550" stop-opacity=".44"/>
+            <stop offset="100%" stop-color="#060e18" stop-opacity=".95"/>
+          </linearGradient>
+          <linearGradient id="glassSheen" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="transparent"/>
+            <stop offset="22%" stop-color="rgba(255,255,255,.04)"/>
+            <stop offset="42%" stop-color="rgba(255,255,255,.2)"/>
+            <stop offset="60%" stop-color="rgba(255,255,255,.05)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </linearGradient>
+          <!-- Silver gradients -->
+          <linearGradient id="silverMain" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#545454"/>
+            <stop offset="18%" stop-color="#a5a5a5"/>
+            <stop offset="40%" stop-color="#dadada"/>
+            <stop offset="56%" stop-color="#ebebeb"/>
+            <stop offset="74%" stop-color="#bebebe"/>
+            <stop offset="90%" stop-color="#848484"/>
+            <stop offset="100%" stop-color="#484848"/>
+          </linearGradient>
+          <linearGradient id="silverMid" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#3a3a3a"/>
+            <stop offset="28%" stop-color="#868686"/>
+            <stop offset="52%" stop-color="#b2b2b2"/>
+            <stop offset="76%" stop-color="#6e6e6e"/>
+            <stop offset="100%" stop-color="#2e2e2e"/>
+          </linearGradient>
+          <linearGradient id="silverLight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#d8d8d8"/>
+            <stop offset="45%" stop-color="#ececec"/>
+            <stop offset="100%" stop-color="#8c8c8c"/>
+          </linearGradient>
+          <!-- CAP — tall solid cylinder, smooth top dome -->
+          <linearGradient id="capBody" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#505050"/>
+            <stop offset="15%" stop-color="#9a9a9a"/>
+            <stop offset="35%" stop-color="#cecece"/>
+            <stop offset="52%" stop-color="#e2e2e2"/>
+            <stop offset="68%" stop-color="#d0d0d0"/>
+            <stop offset="85%" stop-color="#969696"/>
+            <stop offset="100%" stop-color="#484848"/>
+          </linearGradient>
+          <linearGradient id="capTopFace" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#e8e8e8"/>
+            <stop offset="50%" stop-color="#d2d2d2"/>
+            <stop offset="100%" stop-color="#909090"/>
+          </linearGradient>
+          <linearGradient id="labelBg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#04090f"/>
+            <stop offset="50%" stop-color="#08121e"/>
+            <stop offset="100%" stop-color="#030710"/>
+          </linearGradient>
+        </defs>
+
+        <!-- SHADOW -->
+        <ellipse cx="100" cy="376" rx="44" ry="5" fill="#000" opacity=".5"/>
+
+        <!-- ── GLASS BOTTLE BODY ── -->
+        <path d="M 32 148 Q 30 290 32 352 Q 100 362 168 352 Q 170 290 168 148 Z"
+              fill="url(#glassBody)" stroke="#1a3a60" stroke-width="1.2"/>
+        <path d="M 32 148 Q 30 290 32 352 Q 100 362 168 352 Q 170 290 168 148 Z"
+              fill="url(#glassSheen)"/>
+        <rect x="32" y="148" width="15" height="204" rx="7" fill="#020a12" opacity=".68"/>
+        <rect x="153" y="148" width="15" height="204" rx="7" fill="#020a12" opacity=".62"/>
+        <ellipse cx="100" cy="350" rx="60" ry="8" fill="rgba(100,160,210,.05)"/>
+
+        <!-- bottle neck -->
+        <rect x="58" y="116" width="84" height="38" rx="6" fill="url(#glassBody)" stroke="#1a3a60" stroke-width="1"/>
+        <rect x="68" y="118" width="24" height="34" rx="4" fill="rgba(255,255,255,.06)"/>
+
+        <!-- ── LABEL ── -->
+        <rect x="40" y="172" width="120" height="136" rx="7" fill="url(#labelBg)" stroke="#102030" stroke-width=".6"/>
+        <rect x="44" y="176" width="112" height="128" rx="5" fill="none" stroke="#081828" stroke-width=".5"/>
+        <text x="100" y="192" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7" fill="#1c3858" letter-spacing="3">NAME</text>
+        <line x1="48" y1="195" x2="152" y2="195" stroke="#081828" stroke-width=".5"/>
+        <text x="100" y="218" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="26" font-weight="800" fill="#c8e4f6" letter-spacing="1.5">Emma's</text>
+        <text x="100" y="230" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="6" fill="#1c3858" letter-spacing="3">CHOSEN FOR YOU</text>
+        <line x1="48" y1="233" x2="152" y2="233" stroke="#081828" stroke-width=".5"/>
+        <text x="100" y="250" text-anchor="middle" font-family="DM Mono,monospace" font-size="8.5" fill="#3e7aaa">0.018% Tretinoin</text>
+        <text x="100" y="264" text-anchor="middle" font-family="DM Mono,monospace" font-size="8.5" fill="#3e7aaa">4% Azelaic acid</text>
+        <text x="100" y="278" text-anchor="middle" font-family="DM Mono,monospace" font-size="8.5" fill="#2e5870">4% Niacinamide</text>
+        <line x1="48" y1="284" x2="152" y2="284" stroke="#081828" stroke-width=".5"/>
+        <text x="100" y="296" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="12" font-weight="700" fill="#1a4870" letter-spacing="5">FORMIAL</text>
+
+        <!-- neon accent lines -->
+        <circle cx="156" cy="175" r="3" fill="#c8f000" opacity=".7"/>
+        <line x1="32" y1="162" x2="40" y2="162" stroke="#c8f000" stroke-width="2.5" opacity=".5"/>
+        <line x1="160" y1="162" x2="168" y2="162" stroke="#c8f000" stroke-width="2.5" opacity=".5"/>
+
+        <!-- ══════════════════════════════════════
+             3-TIER PUMP — always present under cap
+             Revealed when cap lifts
+        ═══════════════════════════════════════ -->
+        <g class="pump-rings">
+          <!-- Tier 1 — outer pump collar (screws onto bottle neck) -->
+          <rect x="40" y="90" width="120" height="34" rx="7" fill="url(#silverMain)" stroke="#8a8a8a" stroke-width=".8"/>
+          <ellipse cx="100" cy="91" rx="60" ry="8.5" fill="#d4d4d4" stroke="#bcbcbc" stroke-width=".7"/>
+          <ellipse cx="100" cy="124" rx="60" ry="6" fill="#606060" opacity=".35"/>
+          <line x1="44" y1="97" x2="156" y2="97" stroke="#585858" stroke-width=".6" opacity=".45"/>
+          <line x1="44" y1="118" x2="156" y2="118" stroke="#585858" stroke-width=".5" opacity=".38"/>
+          <text x="100" y="109" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="10" font-weight="700" fill="#1c2830" letter-spacing="4" opacity=".8">FORMIAL LABS</text>
+          <rect x="48" y="93" width="26" height="28" rx="4" fill="rgba(255,255,255,.11)"/>
+          <!-- Tier 2 — middle ring -->
+          <rect x="56" y="60" width="88" height="34" rx="7" fill="url(#silverMid)" stroke="#707070" stroke-width=".8"/>
+          <ellipse cx="100" cy="61" rx="44" ry="8" fill="#bebebe" stroke="#a6a6a6" stroke-width=".6"/>
+          <ellipse cx="100" cy="94" rx="44" ry="5.5" fill="#484848" opacity=".3"/>
+          <line x1="60" y1="68" x2="140" y2="68" stroke="#383838" stroke-width=".5" opacity=".5"/>
+          <line x1="60" y1="86" x2="140" y2="86" stroke="#383838" stroke-width=".5" opacity=".38"/>
+          <rect x="62" y="63" width="20" height="26" rx="4" fill="rgba(255,255,255,.09)"/>
+          <!-- Tier 3 — nozzle dome (top press) -->
+          <rect x="74" y="26" width="52" height="38" rx="10" fill="url(#silverLight)" stroke="#aeaeae" stroke-width=".8"/>
+          <ellipse cx="100" cy="28" rx="26" ry="9" fill="#e0e0e0" stroke="#cacaca" stroke-width=".7"/>
+          <ellipse cx="100" cy="28" rx="16" ry="5" fill="#d0d0d0" stroke="#b8b8b8" stroke-width=".5"/>
+          <ellipse cx="100" cy="64" rx="26" ry="5.5" fill="#545454" opacity=".28"/>
+          <line x1="78" y1="36" x2="122" y2="36" stroke="#8c8c8c" stroke-width=".6" opacity=".55"/>
+          <line x1="78" y1="54" x2="122" y2="54" stroke="#8c8c8c" stroke-width=".5" opacity=".4"/>
+          <rect x="78" y="29" width="14" height="30" rx="4" fill="rgba(255,255,255,.14)"/>
+        </g>
+
+        <!-- ══════════════════════════════════════
+             CAP — tall solid cylinder, sits over pump
+             Lifts off on hover
+        ═══════════════════════════════════════ -->
+        <g class="cap-lid">
+          <!-- cap cylinder body — tall, same width as bottle neck area -->
+          <rect x="36" y="20" width="128" height="106" rx="10" fill="url(#capBody)" stroke="#8c8c8c" stroke-width="1"/>
+          <!-- cap top face — flat with slight dome -->
+          <ellipse cx="100" cy="22" rx="64" ry="12" fill="url(#capTopFace)" stroke="#d0d0d0" stroke-width=".9"/>
+          <!-- cap top highlight arc -->
+          <path d="M 52 18 Q 100 10 148 18" stroke="rgba(255,255,255,.35)" stroke-width="1.5" fill="none"/>
+          <!-- F—L logo etched on cap top -->
+          <text x="100" y="26" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="14" font-weight="700" fill="#2a3a44" letter-spacing="4" opacity=".75">F—L</text>
+          <!-- cap body highlight strip (left) -->
+          <rect x="44" y="26" width="22" height="96" rx="5" fill="rgba(255,255,255,.13)"/>
+          <!-- cap body seam lines (subtle horizontal rings for premium look) -->
+          <line x1="38" y1="52" x2="162" y2="52" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+          <line x1="38" y1="88" x2="162" y2="88" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
+          <!-- cap bottom rim ring -->
+          <ellipse cx="100" cy="126" rx="64" ry="8" fill="#3c3c3c" opacity=".5"/>
+          <ellipse cx="100" cy="124" rx="62" ry="5" fill="#c0c0c0" stroke="#a8a8a8" stroke-width=".5"/>
+          <!-- thin chrome band at bottom of cap -->
+          <rect x="36" y="118" width="128" height="8" rx="4" fill="url(#silverMain)" stroke="#909090" stroke-width=".5"/>
+        </g>
+
+      </svg>
+    </div>
+
+    <!-- ONE DOT — only batch -->
+    <div class="dots-row">
+      <div class="dot-item" onclick="goto('batch')">
+        <div class="dot batch"></div>
+        <span class="dot-lbl">Batches</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ BATCH PAGE ══════════ -->
+<div class="page inner" id="page-batch">
+  <div class="topbar">
+    <div class="back" onclick="goHome()">← Back</div>
+    <div class="page-title">BATCHES</div>
+    <div class="top-dot"></div>
+  </div>
+  <div class="body">
+    <div class="card">
+      <div class="eyebrow">01 — Compounding</div>
+      <div class="card-title">Batch Sheet → PDF</div>
+      <div class="card-desc">Paste formulas one per line or run together. Duplicates auto-count as multiple pumps.</div>
+      <textarea id="batchInput" placeholder="Tretinoin 0.030% + Clindamycin 1% + Spironolactone 5%
+Tretinoin 0.018% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.018% + Niacinamide 4% + Azelaic acid 4%
+Tretinoin 0.025% + Niacinamide 4% + Azelaic acid 4%"></textarea>
+      <div class="btns">
+        <button class="btn btn-neon" onclick="processBatch()">↺ Process</button>
+        <button class="btn btn-ghost" onclick="clearBatch()">Clear</button>
+      </div>
+      <div class="hint" id="batchHint"></div>
+    </div>
+    <div id="batchOutput">
+      <div class="out-row">
+        <div class="out-info">Output — <span id="batchSummary"></span></div>
+        <button class="btn btn-neon" onclick="downloadPDF()">↓ PDF</button>
+      </div>
+      <div class="stabs">
+        <button class="stab active" onclick="switchStab('cards',this)">Cards</button>
+        <button class="stab" onclick="switchStab('master',this)">Master List</button>
+      </div>
+      <div id="stab-cards" class="out-sec visible"></div>
+      <div id="stab-master" class="out-sec"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function goto(t){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+t).classList.add('active');}
+function goHome(){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('home').classList.add('active');}
+function switchStab(n,btn){document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.out-sec').forEach(s=>s.classList.remove('visible'));btn.classList.add('active');document.getElementById('stab-'+n).classList.add('visible');}
+
+const TRET=0.01,EXC=["EDTA","BHT","Sodium Metabisulphite"],EP=0.1;
+const AING=["Tretinoin","Azelaic acid","Niacinamide","Spironolactone","Clindamycin","Hydroquinone","Kojic acid","Hyaluronic Acid","Adapalene","Benzoyl Peroxide","Minoxidil","Tranexamic acid","Hydrocortisone","Alpha Arbutin","Transcutol-P","Propylene Glycol","Sodium Metabisulphite","EDTA","BHT"];
+const AB={"tretinoin":"T","azelaic acid":"A","niacinamide":"N","spironolactone":"S","clindamycin":"C","hydroquinone":"H","kojic acid":"K","tranexamic acid":"X","hyaluronic acid":"Y","adapalene":"Ad","benzoyl peroxide":"B","minoxidil":"M","hydrocortisone":"Hc","alpha arbutin":"Aa"};
+function tg(n){if(n<=0)return 0;if(n===1)return 20;if(n===2)return 40;return 40+(n-2)*15;}
+function isTCS(b){const n=b.map(i=>i.name.toLowerCase());return n.some(x=>x.includes('tretinoin'))&&n.some(x=>x.includes('clindamycin'))&&n.some(x=>x.includes('spironolactone'));}
+function bf(base){const names=base.map(i=>i.name.toLowerCase());const hasAz=names.some(n=>n.includes('azelaic'));const hasTret=names.some(n=>n.includes('tretinoin'));const exc=EXC.filter(e=>!(e==='EDTA'&&!hasAz)).map(e=>({name:e,percent:EP}));const ap=base.filter(i=>!i.name.toLowerCase().includes('tretinoin')).reduce((s,i)=>s+i.percent,0);const sp=ap*0.5;let sv=null;if(sp>0){const nm=(hasTret&&isTCS(base))?'Propylene Glycol':'Transcutol-P';sv={name:nm,percent:sp};}return[...base,...exc,...(sv?[sv]:[])]}
+function cr(base,count){const full=bf(base);const tG=tg(count);const sP=full.reduce((s,i)=>s+i.percent,0);const bP=100-sP;let xtv=0;const rows=[];for(const ing of full){const g=(ing.percent/100)*tG;const iT=ing.name.toLowerCase().includes('tretinoin');const iTr=ing.name.toLowerCase().includes('transcutol');const iPG=ing.name.toLowerCase().includes('propylene glycol');const isE=EXC.includes(ing.name);if(iT){const ml=g/TRET;xtv+=ml-g;rows.push({name:ing.name+' *',pct:ing.percent,qty:ml,type:'tret'});}else if(iTr||iPG){rows.push({name:ing.name+' **',pct:ing.percent,qty:g,type:'solv'});}else if(isE){rows.push({name:ing.name,pct:ing.percent,qty:g,type:'exc'});}else{rows.push({name:ing.name,pct:ing.percent,qty:g,type:'api'});}}rows.push({name:'Base (q.s.)',pct:bP,qty:(bP/100)*tG-xtv,type:'base'});rows.push({name:'TOTAL',pct:100,qty:tG,type:'total'});return rows;}
+function cl(base){const t=base.filter(i=>i.name.toLowerCase().includes('tretinoin'));const o=base.filter(i=>!i.name.toLowerCase().includes('tretinoin')).sort((a,b)=>a.name.localeCompare(b.name));let c='';for(const i of[...t,...o]){const k=i.name.toLowerCase().trim();c+=AB[k]||i.name[0].toUpperCase();}if(t.length)c+=` ${t[0].percent.toFixed(3)}%`;return c;}
+function fk(ings){return ings.map(i=>i.name.toLowerCase()+':'+i.percent.toFixed(6)).sort().join('|');}
+function pb(raw){const cleaned=raw.trim().replace(/(\d)\s+%/g,'$1%');const text=cleaned.replace(/(?<!\n)(?=Tretinoin\s)/gi,'\n');const groups={};for(let line of text.split('\n')){line=line.trim();if(!line||!line.includes('%'))continue;const parts=line.split('+');const ings=[];for(const part of parts){const m=part.trim().match(/^(.*?)\s+([\d.]+)%\s*$/);if(!m)continue;const name=m[1].trim();const pct=parseFloat(m[2]);if(!name||isNaN(pct))continue;ings.push({name,percent:pct});}if(!ings.length)continue;const k=fk(ings);if(!groups[k])groups[k]={formula:ings,raw:line,count:0};groups[k].count++;}return Object.values(groups).sort((a,b)=>cl(a.formula).localeCompare(cl(b.formula)));}
+function gm(groups){const m={};for(const g of groups){const full=bf(g.formula);const tG=tg(g.count);for(const ing of full){const gA=(ing.percent/100)*tG;const iT=ing.name.toLowerCase().includes('tretinoin');const iTr=ing.name.toLowerCase().includes('transcutol');const iPG=ing.name.toLowerCase().includes('propylene glycol');let key=ing.name;if(iT){m['Tretinoin']=(m['Tretinoin']||0)+gA/TRET;continue;}if(iTr)key='Transcutol-P';if(iPG)key='Propylene Glycol';m[key]=(m[key]||0)+gA;}}return m;}
+function rCards(groups){const el=document.getElementById('stab-cards');if(!groups.length){el.innerHTML='<p style="color:var(--faint);font-family:var(--mono);font-size:12px;padding:2rem 0;">no data</p>';return;}let html='<div class="batch-grid">';for(const g of groups){const code=cl(g.formula);const rows=cr(g.formula,g.count);const tG=tg(g.count);let tR='';for(const r of rows){let q,c='';if(r.type==='tret'){q=`${r.qty.toFixed(2)} ml`;c='tret-row';}else if(r.type==='solv'){q=`${r.qty.toFixed(4)} ml`;c='solv-row';}else if(r.type==='exc'){q=`${r.qty.toFixed(4)} g`;c='exc-row';}else if(r.type==='base'){q=`${r.qty.toFixed(4)} g`;c='base-row';}else if(r.type==='total'){q=`${r.qty.toFixed(2)} g`;c='total-row';}else{q=`${r.qty.toFixed(4)} g`;}tR+=`<tr class="${c}"><td>${r.name}</td><td>${r.pct.toFixed(3)}%</td><td>${q}</td></tr>`;}html+=`<div class="batch-card"><div class="batch-code">${code}</div><div class="batch-raw">${g.raw}</div><div class="batch-pills"><span class="pill pn">${g.count} pump${g.count>1?'s':''}</span><span class="pill po">${tG}g</span>${isTCS(g.formula)?'<span class="pill pw">TCS·PG</span>':''}</div><table class="ing-table"><thead><tr><th>Ingredient</th><th>%</th><th>Qty</th></tr></thead><tbody>${tR}</tbody></table><div class="note-line">* Tret stock 0.1g/10ml · ** Solvent = 50% non-Tret API wt.</div></div>`;}html+='</div>';el.innerHTML=html;}
+function rMaster(groups){const el=document.getElementById('stab-master');const master=gm(groups);const tP=groups.reduce((s,g)=>s+g.count,0);let rows='';for(const ing of AING){const amt=master[ing];if(!amt)continue;const unit=['Tretinoin','Transcutol-P','Propylene Glycol'].includes(ing)?'ml':'g';rows+=`<tr><td>${ing}</td><td><span class="pill po">${unit}</span></td><td style="color:var(--neon);font-weight:600">${amt.toFixed(4)}</td></tr>`;}el.innerHTML=`<div class="stat-row"><div class="stat"><div class="stat-n">${groups.length}</div><div class="stat-l">unique formulas</div></div><div class="stat" style="border-left-color:var(--orange)"><div class="stat-n" style="color:var(--orange)">${tP}</div><div class="stat-l">total pumps</div></div></div><div class="table-wrap"><table class="mt"><thead><tr><th>Ingredient</th><th>Unit</th><th>Total to prepare</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+
+let _g=[];
+function processBatch(){const raw=document.getElementById('batchInput').value.trim();const h=document.getElementById('batchHint');if(!raw){h.textContent='paste formulas first';h.className='hint err';return;}_g=pb(raw);if(!_g.length){h.textContent='no valid formulas found';h.className='hint err';return;}rCards(_g);rMaster(_g);const t=_g.reduce((s,g)=>s+g.count,0);document.getElementById('batchSummary').textContent=`${_g.length} formula${_g.length>1?'s':''} · ${t} pump${t>1?'s':''}`;document.getElementById('batchOutput').style.display='block';h.className='hint ok';h.textContent=`✓ ${_g.length} batch${_g.length>1?'es':''} · ${t} pumps`;sts(_g);}
+function clearBatch(){document.getElementById('batchInput').value='';document.getElementById('batchHint').textContent='';document.getElementById('batchHint').className='hint';document.getElementById('batchOutput').style.display='none';_g=[];}
+
+const IC=["Tretinoin","Azelaic acid","Niacinamide","Spironolactone","Clindamycin","Hydroquinone","Kojic acid","Hyaluronic","Adapalene","Benzoyl Peroxide","Minoxidil","Tranexamic acid","Hydrocortisone","Alpha Arbutin","Transcutol-P","Sodium Metabisulphite","EDTA","BHT"];
+function giq(calcR,n){const nm={"Tretinoin":r=>r.type==='tret',"Azelaic acid":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('azelaic'),"Niacinamide":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('niacinamide'),"Spironolactone":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('spironolactone'),"Clindamycin":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('clindamycin'),"Hydroquinone":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('hydroquinone'),"Kojic acid":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('kojic'),"Hyaluronic":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('hyaluronic'),"Adapalene":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('adapalene'),"Benzoyl Peroxide":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('benzoyl'),"Minoxidil":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('minoxidil'),"Tranexamic acid":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('tranexamic'),"Hydrocortisone":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('hydrocortisone'),"Alpha Arbutin":r=>r.name.toLowerCase().replace(/ \*+/g,'').includes('arbutin'),"Transcutol-P":r=>r.type==='solv'&&r.name.toLowerCase().includes('transcutol'),"Sodium Metabisulphite":r=>r.name.toLowerCase().includes('metabisulph'),"EDTA":r=>r.name.toLowerCase().includes('edta'),"BHT":r=>r.name.toLowerCase().includes('bht')};const m=nm[n];if(!m)return 0;const row=calcR.find(m);if(!row)return 0;return parseFloat(row.qty.toFixed(4));}
+function sts(groups){const url=document.getElementById('sheetsUrl').value.trim();const st=document.getElementById('sheetsStatus');if(!url)return;st.textContent='sending…';const now=new Date();const date=String(now.getDate()).padStart(2,'0')+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+now.getFullYear();const tP=groups.reduce((s,g)=>s+g.count,0);const tI=new Array(18).fill(0);groups.forEach(g=>{const cR=cr(g.formula,g.count);IC.forEach((col,i)=>{tI[i]+=giq(cR,col);});});let fired=false;window._sc=function(r){fired=true;st.style.color=r&&r.status==='ok'?'var(--neon)':'var(--pink)';st.textContent=r&&r.status==='ok'?'✓ synced':'✗ error';};const up=new URLSearchParams({action:'usage',date,pumps:tP,callback:'_sc'});tI.forEach((v,i)=>up.append('ing_'+i,parseFloat(v.toFixed(4))));fs(url+'?'+up.toString());setTimeout(()=>fs(url+'?'+new URLSearchParams({action:'packaging',date,pumps:tP,callback:'_sc'}).toString()),1500);setTimeout(()=>fs(url+'?'+new URLSearchParams({action:'bmr',date,formulas:JSON.stringify(groups.map(g=>({formula:g.raw,pumps:g.count}))),callback:'_sc'}).toString()),3000);setTimeout(()=>{if(!fired){st.style.color='var(--neon)';st.textContent='✓ sent';}},10000);}
+function fs(src){const s=document.createElement('script');s.src=src;document.body.appendChild(s);setTimeout(()=>s.remove(),15000);}
+
+function downloadPDF(){if(!_g.length){showToast('No batches to export');return;}const date=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});const total=_g.reduce((s,g)=>s+g.count,0);let ch='';for(const g of _g){const code=cl(g.formula);const rows=cr(g.formula,g.count);const tG=tg(g.count);const tcs=isTCS(g.formula);let tR='';for(const r of rows){let q,c2='';if(r.type==='tret'){q=`${r.qty.toFixed(2)} ml`;c2='tret';}else if(r.type==='solv'){q=`${r.qty.toFixed(4)} ml`;c2='solv';}else if(r.type==='exc'){q=`${r.qty.toFixed(4)} g`;c2='exc';}else if(r.type==='base'){q=`${r.qty.toFixed(4)} g`;c2='base';}else if(r.type==='total'){q=`${r.qty.toFixed(2)} g`;c2='total';}else{q=`${r.qty.toFixed(4)} g`;}tR+=`<tr class="${c2}"><td>${r.name}</td><td>${r.pct.toFixed(3)}%</td><td>${q}</td></tr>`;}ch+=`<div class="card"><div class="code">${code}</div><div class="raw">${g.raw}</div><div class="pills"><span class="pill g">${g.count} pump${g.count>1?'s':''}</span><span class="pill o">${tG}g</span>${tcs?'<span class="pill w">TCS·PG</span>':''}</div><table><thead><tr><th>Ingredient</th><th>%</th><th>Qty</th></tr></thead><tbody>${tR}</tbody></table><div class="note">* Tret 0.1g/10ml · ** Solvent=50% non-Tret API</div></div>`;}const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Formial Labs Batch ${date}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;background:#fff;color:#0f172a;padding:16px;}.ph{text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #0d9488;}.ph h1{font-size:20px;color:#0d9488;}.ph p{font-size:11px;color:#64748b;}.pb{display:block;margin:0 auto 20px;padding:12px 32px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;}@media print{.pb{display:none;}}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}.card{border:1.5px solid #bae6fd;border-radius:10px;padding:12px;page-break-inside:avoid;break-inside:avoid;background:#f8faff;}.code{font-size:17px;font-weight:700;color:#0d9488;margin-bottom:2px;}.raw{font-size:9px;color:#64748b;margin-bottom:8px;font-family:monospace;line-height:1.5;}.pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}.pill{font-size:9px;padding:2px 8px;border-radius:20px;font-family:monospace;font-weight:600;}.g{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}.o{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}.w{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}table{width:100%;border-collapse:collapse;}th{font-size:9px;color:#64748b;text-transform:uppercase;padding:4px 6px;border-bottom:1.5px solid #bae6fd;text-align:left;background:#f0f9ff;}td{font-size:10px;padding:4px 6px;border-bottom:1px solid #e0f2fe;font-family:monospace;}tr:last-child td{border-bottom:none;}tr.tret td{color:#dc2626;}tr.solv td{color:#0369a1;}tr.exc td{color:#64748b;}tr.base td{color:#94a3b8;}tr.total td{background:#f0fdfa;color:#0d9488;font-weight:700;border-top:1.5px solid #99f6e4;}.note{font-size:8px;color:#94a3b8;margin-top:8px;font-family:monospace;line-height:1.6;}</style></head><body><div class="ph"><h1>Formial Labs — Compounding Batch Sheet</h1><p>${_g.length} formula${_g.length>1?'s':''} · ${total} pump${total>1?'s':''} · ${date}</p></div><button class="pb" onclick="window.print()">🖨 Print / Save as PDF</button><div class="grid">${ch}</div></body></html>`;const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const tab=window.open(url,'_blank');if(!tab){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);}setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('PDF opened — tap Print!');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body>
+</html>
